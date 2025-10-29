@@ -1,6 +1,4 @@
-// Минимальная логика без внешних библиотек
-// Поддерживает запуск как внутри Telegram WebApp, так и в обычном браузере (для разработки).
-
+// Версия с графиком истории (Chart.js)
 const QUESTIONS = [
   "Ощущение онемения или покалывания в теле",
   "Ощущение жары",
@@ -29,29 +27,38 @@ const $ = (sel) => document.querySelector(sel);
 const screenStart = $("#screen-start");
 const screenTest = $("#screen-test");
 const screenResult = $("#screen-result");
+const screenHistory = $("#screen-history");
 const btnStart = $("#btn-start");
 const btnPrev = $("#btn-prev");
 const btnNext = $("#btn-next");
 const btnRestart = $("#btn-restart");
-const questionBlock = $("#question-block");
-const progressText = $("#progress-text");
 const totalScoreEl = $("#total-score");
 const levelTextEl = $("#level-text");
+const progressText = $("#progress-text");
+const questionBlock = $("#question-block");
+const navStart = $("#nav-start");
+const navHistory = $("#nav-history");
+const historyList = $("#history-list");
+const btnExport = $("#btn-export");
+const btnClear = $("#btn-clear");
+let historyChart = null;
 
 let index = 0;
 let answers = Array(QUESTIONS.length).fill(null);
+let lastTotal = null;
+let lastLevel = null;
 
 function showScreen(name) {
   screenStart.classList.toggle("hidden", name !== "start");
   screenTest.classList.toggle("hidden", name !== "test");
   screenResult.classList.toggle("hidden", name !== "result");
+  screenHistory.classList.toggle("hidden", name !== "history");
 }
 
 function renderQuestion() {
   progressText.textContent = `Вопрос ${index + 1} / ${QUESTIONS.length}`;
   questionBlock.textContent = QUESTIONS[index];
 
-  // Сброс radio и восстановление ответа, если был
   const radios = document.querySelectorAll('input[name="score"]');
   radios.forEach(r => { r.checked = false; });
   if (answers[index] !== null) {
@@ -59,7 +66,6 @@ function renderQuestion() {
     if (toCheck) toCheck.checked = true;
   }
 
-  // Кнопки навигации
   btnPrev.disabled = index === 0;
   btnNext.textContent = index === QUESTIONS.length - 1 ? "Завершить" : "Далее";
 }
@@ -69,6 +75,120 @@ function computeLevel(total) {
   if (total <= 35) return "средний";
   return "высокий (потенциально опасный)";
 }
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem("bai_results") || "[]"); }
+  catch { return []; }
+}
+function setHistory(arr) {
+  localStorage.setItem("bai_results", JSON.stringify(arr));
+}
+
+function saveLastToHistory() {
+  if (lastTotal == null) return;
+  const entry = {
+    timestamp: new Date().toISOString(),
+    total_score: lastTotal,
+    level: lastLevel,
+    answers
+  };
+  const history = getHistory();
+  history.push(entry);
+  setHistory(history);
+  alert("Результат сохранён на этом устройстве. Откройте вкладку «История».");
+}
+
+function renderHistoryList() {
+  const data = getHistory();
+  if (data.length === 0) {
+    historyList.innerHTML = '<p class="muted">Пока нет сохранённых результатов.</p>';
+    return;
+  }
+  historyList.innerHTML = "";
+  data.slice().reverse().forEach(item => {
+    const div = document.createElement("div");
+    div.className = "history-item";
+    const dt = new Date(item.timestamp);
+    const dateText = dt.toLocaleString();
+    div.innerHTML = `
+      <div>
+        <div><strong>${item.total_score}</strong> / 63 — ${item.level}</div>
+        <div class="muted">${dateText}</div>
+      </div>
+      <span class="badge">21×0–3</span>
+    `;
+    historyList.appendChild(div);
+  });
+}
+
+function renderHistoryChart() {
+  const data = getHistory();
+  const ctx = document.getElementById("history-chart");
+  if (!ctx) return;
+
+  // Подготовка данных
+  const labels = data.map(d => new Date(d.timestamp)).sort((a,b)=>a-b);
+  // Сортировка исходных данных по времени
+  const sorted = getHistory().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  const values = sorted.map(d => d.total_score);
+  const labelStrings = sorted.map(d => {
+    const dt = new Date(d.timestamp);
+    return dt.toLocaleDateString() + " " + dt.toLocaleTimeString().slice(0,5);
+  });
+
+  // Уничтожить предыдущий график, если есть
+  if (historyChart) {
+    historyChart.destroy();
+  }
+
+  historyChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labelStrings,
+      datasets: [{
+        label: "Баллы BAI",
+        data: values,
+        fill: false,
+        tension: 0.25
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          suggestedMin: 0,
+          suggestedMax: 63,
+          ticks: { stepSize: 5 }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const i = items[0].dataIndex;
+              const v = values[i];
+              const level = v <= 21 ? "низкий" : v <= 35 ? "средний" : "высокий";
+              return `Уровень: ${level}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target && e.target.id === "btn-save") {
+    saveLastToHistory();
+  }
+});
+
+// Навигация
+const btnPrev = document.getElementById("btn-prev");
+const btnNext = document.getElementById("btn-next");
+const btnRestart = document.getElementById("btn-restart");
 
 btnStart.addEventListener("click", () => {
   index = 0;
@@ -83,57 +203,67 @@ btnPrev.addEventListener("click", () => {
 });
 
 btnNext.addEventListener("click", () => {
-  // Читаем выбранный ответ
   const sel = document.querySelector('input[name="score"]:checked');
-  if (!sel) {
-    alert("Выберите вариант ответа (0–3).");
-    return;
-  }
+  if (!sel) { alert("Выберите вариант ответа (0–3)."); return; }
   answers[index] = Number(sel.value);
 
   if (index < QUESTIONS.length - 1) {
     index += 1;
     renderQuestion();
   } else {
-    // Подсчёт результата
     const total = answers.reduce((a, b) => a + b, 0);
     const level = computeLevel(total);
+    lastTotal = total; lastLevel = level;
     totalScoreEl.textContent = String(total);
     levelTextEl.textContent = level;
     showScreen("result");
-
-    // TODO: интеграция с Supabase для сохранения результата
-    // saveResult(total, level, answers)
   }
 });
 
-btnRestart.addEventListener("click", () => {
-  showScreen("start");
+btnRestart.addEventListener("click", () => showScreen("start"));
+
+navStart.addEventListener("click", () => showScreen("start"));
+navHistory.addEventListener("click", () => {
+  renderHistoryList();
+  renderHistoryChart();
+  showScreen("history");
 });
 
-// Попытка инициализировать Telegram WebApp (если доступно)
+btnExport.addEventListener("click", () => {
+  const data = getHistory();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "bai_results.json"; a.click();
+  URL.revokeObjectURL(url);
+});
+
+btnClear.addEventListener("click", () => {
+  if (confirm("Очистить локальную историю на этом устройстве?")) {
+    localStorage.removeItem("bai_results");
+    renderHistoryList();
+    if (historyChart) historyChart.destroy();
+  }
+});
+
+// Инициализация Telegram WebApp
 (function initTelegram() {
   try {
     if (window.Telegram && window.Telegram.WebApp) {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
-      // Можно настроить тему, mainButton и т.д. при необходимости
     }
-  } catch (e) {
-    // молча игнорируем в браузере
-  }
+  } catch (e) {}
 })();
 
-// Поддержка клавиатуры: цифры 0-3 для быстрого выбора
+// Горячие клавиши
 document.addEventListener("keydown", (e) => {
   const map = { "0": 0, "1": 1, "2": 2, "3": 3 };
   if (screenTest.classList.contains("hidden")) return;
   if (e.key in map) {
     const val = map[e.key];
     const el = document.querySelector(`input[name="score"][value="${val}"]`);
-    if (el) {
-      el.checked = true;
-    }
+    if (el) el.checked = true;
   }
 });

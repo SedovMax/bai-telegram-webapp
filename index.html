@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Шкала тревоги Бека (BAI)</title>
   <meta name="description" content="Telegram WebApp: Шкала тревоги Бека (BAI) — 21 вопрос, быстрый результат" />
-  <!-- Telegram WebApp SDK (работает внутри Telegram; вне Telegram просто не вызовет ошибок) -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Chart.js для графика истории -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -14,6 +15,10 @@
     <header class="header">
       <h1>Шкала тревоги Бека (BAI)</h1>
       <p class="subtitle">Оцените, насколько сильно симптомы тревоги беспокоили вас <strong>за последнюю неделю, включая сегодняшний день</strong>.</p>
+      <nav class="nav">
+        <button id="nav-start" class="link">Старт</button>
+        <button id="nav-history" class="link">История</button>
+      </nav>
     </header>
 
     <main id="screen-start" class="card">
@@ -31,9 +36,7 @@
     <main id="screen-test" class="card hidden">
       <div class="progress"><span id="progress-text">Вопрос 1 / 21</span></div>
 
-      <div id="question-block" class="question-block">
-        <!-- Вопрос подставляется скриптом -->
-      </div>
+      <div id="question-block" class="question-block"></div>
 
       <div class="answers">
         <label class="answer"><input type="radio" name="score" value="0"> 0 — не беспокоило</label>
@@ -55,7 +58,19 @@
       <p class="level">Уровень тревожности: <span id="level-text">—</span></p>
       <p class="note">Интерпретация основана на периоде: последняя неделя, включая сегодня.</p>
       <div class="actions">
+        <button id="btn-save" class="btn">Сохранить результат на этом устройстве</button>
         <button id="btn-restart" class="btn btn-secondary">Пройти ещё раз</button>
+      </div>
+    </main>
+
+    <main id="screen-history" class="card hidden">
+      <h2>История результатов (это устройство)</h2>
+      <p class="muted">Позже добавим облачное сохранение через Supabase. Пока результаты хранятся на вашем устройстве.</p>
+      <canvas id="history-chart" height="160" style="width:100%;"></canvas>
+      <div id="history-list" class="history-list"></div>
+      <div class="actions">
+        <button id="btn-export" class="btn btn-secondary">Экспорт JSON</button>
+        <button id="btn-clear" class="btn btn-secondary">Очистить историю</button>
       </div>
     </main>
   </div>
