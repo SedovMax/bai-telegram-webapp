@@ -1,4 +1,6 @@
-// Версия с графиком истории (Chart.js)
+console.log("BAI v3.1 (Chart.js UMD) loaded");
+
+// === ДАННЫЕ ТЕСТА ===
 const QUESTIONS = [
   "Ощущение онемения или покалывания в теле",
   "Ощущение жары",
@@ -23,11 +25,13 @@ const QUESTIONS = [
   "Усиление потоотделения (не связанное с жарой)",
 ];
 
+// === УТИЛИТЫ ===
 const $ = (sel) => document.querySelector(sel);
 const screenStart = $("#screen-start");
 const screenTest = $("#screen-test");
 const screenResult = $("#screen-result");
 const screenHistory = $("#screen-history");
+
 const btnStart = $("#btn-start");
 const btnPrev = $("#btn-prev");
 const btnNext = $("#btn-next");
@@ -36,18 +40,21 @@ const totalScoreEl = $("#total-score");
 const levelTextEl = $("#level-text");
 const progressText = $("#progress-text");
 const questionBlock = $("#question-block");
+
 const navStart = $("#nav-start");
 const navHistory = $("#nav-history");
+
 const historyList = $("#history-list");
 const btnExport = $("#btn-export");
 const btnClear = $("#btn-clear");
-let historyChart = null;
 
+let historyChart = null;
 let index = 0;
 let answers = Array(QUESTIONS.length).fill(null);
 let lastTotal = null;
 let lastLevel = null;
 
+// === ЭКРАНЫ ===
 function showScreen(name) {
   screenStart.classList.toggle("hidden", name !== "start");
   screenTest.classList.toggle("hidden", name !== "test");
@@ -76,6 +83,7 @@ function computeLevel(total) {
   return "высокий (потенциально опасный)";
 }
 
+// === ЛОКАЛЬНАЯ ИСТОРИЯ ===
 function getHistory() {
   try { return JSON.parse(localStorage.getItem("bai_results") || "[]"); }
   catch { return []; }
@@ -83,7 +91,6 @@ function getHistory() {
 function setHistory(arr) {
   localStorage.setItem("bai_results", JSON.stringify(arr));
 }
-
 function saveLastToHistory() {
   if (lastTotal == null) return;
   const entry = {
@@ -97,7 +104,6 @@ function saveLastToHistory() {
   setHistory(history);
   alert("Результат сохранён на этом устройстве. Откройте вкладку «История».");
 }
-
 function renderHistoryList() {
   const data = getHistory();
   if (data.length === 0) {
@@ -121,30 +127,24 @@ function renderHistoryList() {
   });
 }
 
+// === ГРАФИК ===
 function renderHistoryChart() {
-  const data = getHistory();
-  const ctx = document.getElementById("history-chart");
-  if (!ctx) return;
-
-  // Подготовка данных
-  const labels = data.map(d => new Date(d.timestamp)).sort((a,b)=>a-b);
-  // Сортировка исходных данных по времени
   const sorted = getHistory().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   const values = sorted.map(d => d.total_score);
-  const labelStrings = sorted.map(d => {
+  const labels = sorted.map(d => {
     const dt = new Date(d.timestamp);
     return dt.toLocaleDateString() + " " + dt.toLocaleTimeString().slice(0,5);
   });
 
-  // Уничтожить предыдущий график, если есть
-  if (historyChart) {
-    historyChart.destroy();
-  }
+  const ctx = document.getElementById("history-chart");
+  if (!ctx) return;
+
+  if (historyChart) historyChart.destroy();
 
   historyChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: labelStrings,
+      labels,
       datasets: [{
         label: "Баллы BAI",
         data: values,
@@ -156,11 +156,7 @@ function renderHistoryChart() {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        y: {
-          suggestedMin: 0,
-          suggestedMax: 63,
-          ticks: { stepSize: 5 }
-        }
+        y: { suggestedMin: 0, suggestedMax: 63, ticks: { stepSize: 5 } }
       },
       plugins: {
         legend: { display: false },
@@ -179,16 +175,12 @@ function renderHistoryChart() {
   });
 }
 
+// === ОБРАБОТЧИКИ ===
 document.addEventListener("click", (e) => {
   if (e.target && e.target.id === "btn-save") {
     saveLastToHistory();
   }
 });
-
-// Навигация
-const btnPrev = document.getElementById("btn-prev");
-const btnNext = document.getElementById("btn-next");
-const btnRestart = document.getElementById("btn-restart");
 
 btnStart.addEventListener("click", () => {
   index = 0;
@@ -241,12 +233,12 @@ btnExport.addEventListener("click", () => {
 btnClear.addEventListener("click", () => {
   if (confirm("Очистить локальную историю на этом устройстве?")) {
     localStorage.removeItem("bai_results");
-    renderHistoryList();
     if (historyChart) historyChart.destroy();
+    renderHistoryList();
   }
 });
 
-// Инициализация Telegram WebApp
+// === Telegram WebApp init (не мешает в браузере) ===
 (function initTelegram() {
   try {
     if (window.Telegram && window.Telegram.WebApp) {
@@ -257,7 +249,7 @@ btnClear.addEventListener("click", () => {
   } catch (e) {}
 })();
 
-// Горячие клавиши
+// === Горячие клавиши ===
 document.addEventListener("keydown", (e) => {
   const map = { "0": 0, "1": 1, "2": 2, "3": 3 };
   if (screenTest.classList.contains("hidden")) return;

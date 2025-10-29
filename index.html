@@ -6,8 +6,8 @@
   <title>Шкала тревоги Бека (BAI)</title>
   <meta name="description" content="Telegram WebApp: Шкала тревоги Бека (BAI) — 21 вопрос, быстрый результат" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Chart.js для графика истории -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ВАЖНО: фиксируем UMD-версию Chart.js (глобальная переменная Chart) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -66,7 +66,7 @@
     <main id="screen-history" class="card hidden">
       <h2>История результатов (это устройство)</h2>
       <p class="muted">Позже добавим облачное сохранение через Supabase. Пока результаты хранятся на вашем устройстве.</p>
-      <canvas id="history-chart" height="160" style="width:100%;"></canvas>
+      <canvas id="history-chart" height="180" style="width:100%;"></canvas>
       <div id="history-list" class="history-list"></div>
       <div class="actions">
         <button id="btn-export" class="btn btn-secondary">Экспорт JSON</button>
