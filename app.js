@@ -46,6 +46,10 @@ const btnStart = $("#btn-start");
 const btnPrev = $("#btn-prev");
 const btnNext = $("#btn-next");
 const btnRestart = $("#btn-restart");
+
+const btnSave = document.getElementById("btn-save");
+const navHistory = document.getElementById("nav-history");
+
 const totalScoreEl = $("#total-score");
 const levelTextEl = $("#level-text");
 const progressText = $("#progress-text");
@@ -313,10 +317,10 @@ btnRestart.addEventListener("click", () => showScreen("start"));
 
 navStart.addEventListener("click", () => showScreen("start"));
 navHistory.addEventListener("click", () => {
-  renderHistoryList();
-  renderHistoryChart();
+  renderHistoryFromCloud();  // теперь берём данные из Supabase
   showScreen("history");
 });
+
 
 btnExport.addEventListener("click", () => {
   const data = getHistory();
@@ -334,6 +338,18 @@ btnClear.addEventListener("click", () => {
     renderHistoryList();
   }
 });
+
+if (btnSave) {
+  btnSave.addEventListener("click", async () => {
+    // Можно оставить локальное сохранение как резерв:
+    // saveLastToHistory();
+
+    // Сохраняем результат в облако (Supabase)
+    await saveCloud(lastTotal, answers);
+  });
+}
+
+
 
 // === Telegram WebApp init (не мешает в браузере) ===
 (function initTelegram() {
