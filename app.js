@@ -25,6 +25,16 @@ const QUESTIONS = [
   "Усиление потоотделения (не связанное с жарой)",
 ];
 
+// initData приходит ТОЛЬКО внутри Telegram
+const tgInitData = (window?.Telegram?.WebApp?.initData) || "";
+
+// Код уровня для БД (англ)
+function computeLevelCode(total) {
+  if (total <= 21) return "low";
+  if (total <= 35) return "medium";
+  return "high";
+}
+
 // === УТИЛИТЫ ===
 const $ = (sel) => document.querySelector(sel);
 const screenStart = $("#screen-start");
@@ -174,6 +184,93 @@ function renderHistoryChart() {
     }
   });
 }
+
+// --- Облако: сохранить результат в Supabase через наш API ---
+async function saveCloud(total, answers) {
+  const levelCode = computeLevelCode(total); // "low" | "medium" | "high"
+  try {
+    const r = await fetch("/api/results/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData: tgInitData,
+        total_score: total,
+        level: levelCode,
+        answers
+      })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || "save_failed");
+    alert("Результат сохранён в облаке.");
+  } catch (e) {
+    console.error(e);
+    alert("Не удалось сохранить в облако. Откройте WebApp внутри Telegram или проверьте сеть.");
+  }
+}
+
+// --- Облако: получить историю ---
+async function fetchCloudHistory(limit = 100) {
+  const r = await fetch(`/api/results/list?limit=${limit}`, {
+    headers: { "x-telegram-init-data": tgInitData }
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "list_failed");
+  return data.items || [];
+}
+
+// --- Облако: отрисовать историю (список + график) ---
+async function renderHistoryFromCloud() {
+  try {
+    const items = await fetchCloudHistory(100);
+
+    // список
+    const list = document.getElementById("history-list");
+    if (!items.length) {
+      list.innerHTML = '<p class="muted">В облаке пока нет результатов.</p>';
+    } else {
+      list.innerHTML = "";
+      items.forEach(item => {
+        const dt = new Date(item.created_at);
+        const el = document.createElement("div");
+        el.className = "history-item";
+        el.innerHTML = `
+          <div>
+            <div><strong>${item.total_score}</strong> / 63 — ${item.level}</div>
+            <div class="muted">${dt.toLocaleString()}</div>
+          </div>
+          <span class="badge">облако</span>
+        `;
+        list.appendChild(el);
+      });
+    }
+
+    // график
+    const sorted = items.slice().sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+    const labels = sorted.map(d => {
+      const dt = new Date(d.created_at);
+      return dt.toLocaleDateString() + " " + dt.toLocaleTimeString().slice(0,5);
+    });
+    const values = sorted.map(d => d.total_score);
+
+    if (window.historyChart) window.historyChart.destroy();
+    const ctx = document.getElementById("history-chart");
+    window.historyChart = new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets: [{ label: "Баллы BAI", data: values, fill: false, tension: 0.25 }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { suggestedMin: 0, suggestedMax: 63 } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    alert("Не удалось загрузить историю из облака. Откройте WebApp внутри Telegram?");
+  }
+}
+
+
 
 // === ОБРАБОТЧИКИ ===
 document.addEventListener("click", (e) => {
