@@ -5,16 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Шкала тревоги Бека (BAI)</title>
   <meta name="description" content="Telegram WebApp: Шкала тревоги Бека (BAI) — 21 вопрос, быстрый результат" />
+
+  <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Chart.js UMD build (global Chart) -->
+
+  <!-- Chart.js UMD (должен грузиться до app.js) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div id="app">
     <header class="header">
       <h1>Шкала тревоги Бека (BAI)</h1>
-      <p class="subtitle">Оцените, насколько сильно симптомы тревоги беспокоили вас <strong>за последнюю неделю, включая сегодняшний день</strong>.</p>
+      <p class="subtitle">Оцените, насколько сильно симптомы тревоги беспокоили вас
+        <strong>за последнюю неделю, включая сегодняшний день</strong>.
+      </p>
       <nav class="nav">
         <button id="nav-start" class="link">Старт</button>
         <button id="nav-history" class="link">История</button>
@@ -23,28 +29,24 @@
 
     <main id="screen-start" class="card">
       <h2>Инструкция</h2>
-      <p>Ниже вы ответите на 21 вопрос. На каждый вопрос выберите один вариант от 0 до 3:</p>
       <ul class="list">
         <li><strong>0</strong> — совсем не беспокоило</li>
-        <li><strong>1</strong> — слегка, не слишком беспокоило</li>
-        <li><strong>2</strong> — умеренно, неприятно, но переносимо</li>
-        <li><strong>3</strong> — очень сильно, с трудом переносимо</li>
+        <li><strong>1</strong> — слегка</li>
+        <li><strong>2</strong> — умеренно</li>
+        <li><strong>3</strong> — очень сильно</li>
       </ul>
       <button id="btn-start" class="btn">Начать тест (21 вопрос, ~3–5 минут)</button>
     </main>
 
     <main id="screen-test" class="card hidden">
       <div class="progress"><span id="progress-text">Вопрос 1 / 21</span></div>
-
       <div id="question-block" class="question-block"></div>
-
       <div class="answers">
         <label class="answer"><input type="radio" name="score" value="0"> 0 — не беспокоило</label>
         <label class="answer"><input type="radio" name="score" value="1"> 1 — слегка</label>
         <label class="answer"><input type="radio" name="score" value="2"> 2 — умеренно</label>
         <label class="answer"><input type="radio" name="score" value="3"> 3 — очень сильно</label>
       </div>
-
       <div class="actions">
         <button id="btn-prev" class="btn btn-secondary">Назад</button>
         <button id="btn-next" class="btn">Далее</button>
@@ -56,7 +58,6 @@
       <h2>Результат</h2>
       <p class="sum">Сумма баллов: <span id="total-score">0</span> / 63</p>
       <p class="level">Уровень тревожности: <span id="level-text">—</span></p>
-      <p class="note">Интерпретация основана на периоде: последняя неделя, включая сегодня.</p>
       <div class="actions">
         <button id="btn-save" class="btn">Сохранить</button>
         <button id="btn-restart" class="btn btn-secondary">Пройти ещё раз</button>
@@ -75,6 +76,7 @@
     </main>
   </div>
 
+  <!-- Ваш код — всегда внизу -->
   <script src="./app.js"></script>
 </body>
 </html>
